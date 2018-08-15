@@ -14,17 +14,17 @@ router.get('/', (req, res, next) => {
   console.log('Get All Notes');
   mongoose.connect(MONGODB_URI)
     .then(() => {
-      // const searchTerm = 'cats';
-      // let filter = {};
+      const { searchTerm } = req.query;
+      let filter = {};
 
-      // if (searchTerm) {
-      //   filter = {$or: [
-      //     {title: { $regex: searchTerm }},
-      //     {content: { $regex: searchTerm }}
-      //   ]};
-      // }
+      if (searchTerm) {
+        filter = {$or: [
+          {title: { $regex: searchTerm }},
+          {content: { $regex: searchTerm }}
+        ]};
+      }
 
-      return Note.find().sort({ _id: 'asc' });
+      return Note.find(filter).sort({ _id: 'asc' });
     })
     .then(results => {
       res.json(results);
@@ -34,8 +34,8 @@ router.get('/', (req, res, next) => {
       return mongoose.disconnect();
     })
     .catch(err => {
-      console.error(`ERROR: ${err.message}`);
-      console.error(err);
+      res.json(`ERROR: ${err.message}`);
+      res.json(err);
     });
 
 });
@@ -58,7 +58,6 @@ router.get('/:id', (req, res, next) => {
       return Note.findOne(filter);
     })
     .then(results => {
-      console.log(results);
       res.json(results);
     })
     .then(() => {
@@ -76,8 +75,7 @@ router.post('/', (req, res, next) => {
   console.log('Create a Note');
   mongoose.connect(MONGODB_URI)
     .then(() => {
-      const title = req.body.title;
-      const content = req.body.content;
+      const { title, content } = req.body;
       let filter = {};
       if (title && content) {
         filter = { title: title, content: content };
@@ -124,7 +122,6 @@ router.put('/:id', (req, res, next) => {
       console.error(`ERROR: ${err.message}`);
       console.error(err);
     });
-
 });
 
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
@@ -133,7 +130,7 @@ router.delete('/:id', (req, res, next) => {
   console.log('Delete a Note');
   mongoose.connect(MONGODB_URI)
     .then(() => {
-      const id = req.params.id;
+      const { id } = req.params;
 
       let filter = {};
       if (id) {
@@ -142,7 +139,7 @@ router.delete('/:id', (req, res, next) => {
       return Note.findByIdAndRemove(filter.id);
     })
     .then(results => {
-      res.json(results);
+      res.status(204).end();
       console.log(results);
     })
     .then(() => {
