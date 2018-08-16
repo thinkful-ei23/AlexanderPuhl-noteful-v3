@@ -1,153 +1,133 @@
 'use strict';
 
 const express = require('express');
+const mongoose = require('mongoose');
+
+const Note = require('../models/note');
 
 const router = express.Router();
 
-const mongoose = require('mongoose');
-const { PORT, MONGODB_URI } = require('../config');
-const Note = require('../models/note');
-
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
+  const { searchTerm } = req.query;
 
-  console.log('Get All Notes');
-  mongoose.connect(MONGODB_URI)
-    .then(() => {
-      const { searchTerm } = req.query;
-      let filter = {};
+  let filter = {};
 
-      if (searchTerm) {
-        filter = {$or: [
-          {title: { $regex: searchTerm }},
-          {content: { $regex: searchTerm }}
-        ]};
-      }
+  if (searchTerm) {
+    filter.title = { $regex: searchTerm, $options: 'i' };
 
-      return Note.find(filter).sort({ _id: 'asc' });
-    })
+    // Mini-Challenge: Search both `title` and `content`
+    // const re = new RegExp(searchTerm, 'i');
+    // filter.$or = [{ 'title': re }, { 'content': re }];
+  }
+
+  Note.find(filter)
+    .sort({ updatedAt: 'desc' })
     .then(results => {
       res.json(results);
-      // console.log(results);
-    })
-    .then(() => {
-      return mongoose.disconnect();
     })
     .catch(err => {
-      res.json(`ERROR: ${err.message}`);
-      res.json(err);
+      next(err);
     });
-
 });
 
 /* ========== GET/READ A SINGLE ITEM ========== */
 router.get('/:id', (req, res, next) => {
+  const { id } = req.params;
 
-  console.log('Get a Note');
-  mongoose.connect(MONGODB_URI)
-    .then(() => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return next(err);
+  }
 
-      const searchId = req.params.id;
-      let filter = {};
-
-      if (searchId) {
-        filter._id = { _id: searchId };
+  Note.findById(id)
+    .then(result => {
+      if (result) {
+        res.json(result);
+      } else {
+        next();
       }
-
-      // return Note.findOne({_id : searchId});
-      return Note.findOne(filter);
-    })
-    .then(results => {
-      res.json(results);
-    })
-    .then(() => {
-      return mongoose.disconnect();
     })
     .catch(err => {
-      console.error(`ERROR: ${err.message}`);
-      console.error(err);
+      next(err);
     });
 });
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
+  const { title, content } = req.body;
 
-  console.log('Create a Note');
-  mongoose.connect(MONGODB_URI)
-    .then(() => {
-      const { title, content } = req.body;
-      let filter = {};
-      if (title && content) {
-        filter = { title: title, content: content };
-      }
-      return Note.create(filter);
-    })
-    .then(results => {
-      res.json(results);
-      console.log(results);
-    })
-    .then(() => {
-      return mongoose.disconnect();
+  /***** Never trust users - validate input *****/
+  if (!title) {
+    const err = new Error('Missing `title` in request body');
+    err.status = 400;
+    return next(err);
+  }
+
+  const newNote = { title, content };
+
+  Note.create(newNote)
+    .then(result => {
+      res.location(`${req.originalUrl}/${result.id}`)
+        .status(201)
+        .json(result);
     })
     .catch(err => {
-      console.error(`ERROR: ${err.message}`);
-      console.error(err);
+      next(err);
     });
 });
 
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
+  const { id } = req.params;
+  const { title, content } = req.body;
 
-  console.log('Update a Note');
-  mongoose.connect(MONGODB_URI)
-    .then(() => {
-      const id = req.params.id;
-      const { title, content } = req.body;
-      let filter = {};
-      if (id && title && content) {
-        // filter = `{_id: ${id}, {title: ${title}}`
-        filter.id = {_id: id};
-        filter.titleAndContent = {title: title, content: content};
+  /***** Never trust users - validate input *****/
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return next(err);
+  }
+
+  if (!title) {
+    const err = new Error('Missing `title` in request body');
+    err.status = 400;
+    return next(err);
+  }
+
+  const updateNote = { title, content };
+
+  Note.findByIdAndUpdate(id, updateNote, { new: true })
+    .then(result => {
+      if (result) {
+        res.status(200).json(result);
+      } else {
+        next();
       }
-      return Note.findByIdAndUpdate(filter.id, filter.titleAndContent);
-    })
-    .then(results => {
-      res.json(results);
-      console.log(results);
-    })
-    .then(() => {
-      return mongoose.disconnect();
     })
     .catch(err => {
-      console.error(`ERROR: ${err.message}`);
-      console.error(err);
+      next(err);
     });
 });
 
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
 router.delete('/:id', (req, res, next) => {
+  const { id } = req.params;
 
-  console.log('Delete a Note');
-  mongoose.connect(MONGODB_URI)
+  /***** Never trust users - validate input *****/
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    return next(err);
+  }
+
+  Note.findByIdAndRemove(id)
     .then(() => {
-      const { id } = req.params;
-
-      let filter = {};
-      if (id) {
-        filter.id = {_id: id};
-      }
-      return Note.findByIdAndRemove(filter.id);
-    })
-    .then(results => {
       res.status(204).end();
-      console.log(results);
-    })
-    .then(() => {
-      return mongoose.disconnect();
     })
     .catch(err => {
-      console.error(`ERROR: ${err.message}`);
-      console.error(err);
+      next(err);
     });
 });
 
