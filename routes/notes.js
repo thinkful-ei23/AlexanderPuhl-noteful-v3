@@ -3,17 +3,18 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Note = require('../models/note');
+// const Tag = require('../models/tag');
+
 const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
-  const { searchTerm, folderId } = req.query;
+  const { searchTerm, folderId, tagId } = req.query;
 
   let filter = {};
 
   if (searchTerm) {
     filter.title = { $regex: searchTerm, $options: 'i' };
-
     // Mini-Challenge: Search both `title` and `content`
     // const re = new RegExp(searchTerm, 'i');
     // filter.$or = [{ 'title': re }, { 'content': re }];
@@ -23,8 +24,12 @@ router.get('/', (req, res, next) => {
     filter.folderId = folderId;
   }
 
-  Note.find(filter)
-    .sort({ updatedAt: 'desc' })
+  if(tagId) {
+    filter.tags = tagId ;
+  }
+
+  Note.find(filter).populate('tags')
+    .sort({ id: 'asc' })
     .then(results => {
       res.json(results);
     })
@@ -58,7 +63,7 @@ router.get('/:id', (req, res, next) => {
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-  const { title, content, folderId } = req.body;
+  const { title, content, folderId, tags } = req.body;
 
   /***** Never trust users - validate input *****/
   if (!title) {
@@ -73,7 +78,13 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  const newNote = { title, content, folderId };
+  if (tags && !mongoose.Types.ObjectId.isValid(tags)) {
+    const err = new Error('The `tags` is not valid');
+    err.status = 400;
+    return next(err);
+  }
+
+  const newNote = { title, content, folderId, tags };
 
   Note.create(newNote)
     .then(result => {
@@ -89,7 +100,7 @@ router.post('/', (req, res, next) => {
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
   const { id } = req.params;
-  const { title, content, folderId } = req.body;
+  const { title, content, folderId, tags } = req.body;
 
   /***** Never trust users - validate input *****/
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -109,8 +120,14 @@ router.put('/:id', (req, res, next) => {
     return next(err);
   }
 
+  if (tags && !mongoose.Types.ObjectId.isValid(tags)) {
+    const err = new Error('The `tag` is not valid');
+    err.status = 400;
+    return next(err);
+  }
 
-  const updateNote = { title, content, folderId };
+
+  const updateNote = { title, content, folderId, tags };
 
   Note.findByIdAndUpdate(id, updateNote, { new: true })
     .then(result => {

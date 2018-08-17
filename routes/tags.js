@@ -2,7 +2,8 @@
 
 const express = require('express');
 const mongoose = require('mongoose');
-const Folder = require('../models/folder');
+const Note = require('../models/note');
+const Tag = require('../models/tag');
 const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
@@ -15,7 +16,7 @@ router.get('/', (req, res, next) => {
     filter.name = { $regex: searchTerm, $options: 'i' };
   }
 
-  Folder.find(filter)
+  Tag.find(filter)
     .sort({ name: 'asc' })
     .then(results => {
       res.json(results);
@@ -35,7 +36,7 @@ router.get('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Folder.findById(id)
+  Tag.findById(id)
     .then(result => {
       if (result) {
         res.json(result);
@@ -59,15 +60,15 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  const newFolder = { name };
+  const newTag = { name };
 
-  Folder.create(newFolder)
+  Tag.create(newTag)
     .then(result => {
       res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => {
       if (err.code === 11000) {
-        err = new Error('The folder name already exists');
+        err = new Error('The tag name already exists');
         err.status = 400;
       }
       next(err);
@@ -92,9 +93,9 @@ router.put('/:id', (req, res, next) => {
     return next(err);
   }
 
-  const updateFolder = { name };
+  const updateTag = { name };
 
-  Folder.findByIdAndUpdate(id, updateFolder, { new: true })
+  Tag.findByIdAndUpdate(id, updateTag, { new: true })
     .then(result => {
       if (result) {
         res.status(200).json(result);
@@ -104,7 +105,7 @@ router.put('/:id', (req, res, next) => {
     })
     .catch(err => {
       if (err.code === 11000) {
-        err = new Error('The folder name already exists');
+        err = new Error('The tag name already exists');
         err.status = 400;
       }
       next(err);
@@ -122,7 +123,10 @@ router.delete('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Folder.findByIdAndRemove(id)
+  Tag.findByIdAndRemove(id)
+    .then(() => {
+      return Note.update({tags: id}, { $pull: {tags: id }}, {multi: true});
+    })
     .then(() => {
       res.status(204).end();
     })
@@ -130,6 +134,5 @@ router.delete('/:id', (req, res, next) => {
       next(err);
     });
 });
-
 
 module.exports = router;
