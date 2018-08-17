@@ -19,7 +19,7 @@ mongoose.connect(MONGODB_URI)
     return Promise.all([
       Note.insertMany(seedNotes),
       Folder.insertMany(seedFolders),
-      Folder.createIndexes(),
+      Folder.createIndexes()
     ]);
   })
   .then(() => {

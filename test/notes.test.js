@@ -3,20 +3,32 @@
 const chai = require('chai');
 const chaiHTTP = require('chai-http');
 const mongoose = require('mongoose');
+
 const app = require('../server');
 const { TEST_MONGODB_URI } = require('../config');
+
 const Note = require('../models/note');
+const Folder = require('../models/folder');
+
 const seedNotes = require('../db/seed/notes');
+const seedFolders = require('../db/seed/folders');
+
 const expect = chai.expect;
 chai.use(chaiHTTP);
 
-describe('Node Noteful Tests', function() {
+describe('Node Noteful Notes Tests', function() {
   before(function () {
     return mongoose.connect(TEST_MONGODB_URI)
       .then(() => mongoose.connection.db.dropDatabase());
   });
   beforeEach(function () {
-    return Note.insertMany(seedNotes);
+    return Promise.all([
+      Note.insertMany(seedNotes),
+      Folder.insertMany(seedFolders),
+    ])
+      .then(() => {
+        Note.createIndexes();
+      });
   });
   afterEach(function () {
     return mongoose.connection.db.dropDatabase();
@@ -49,14 +61,15 @@ describe('Node Noteful Tests', function() {
         .then(([data, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
-          expect(res.body).to.be.a('array');
+          expect(res.body).to.be.an('array');
           expect(res.body).to.have.length(data.length);
           res.body.forEach(function (item, i) {
-            expect(item).to.be.a('object');
-            expect(item).to.include.all.keys('id', 'title', 'createdAt', 'updatedAt');
+            expect(item).to.be.an('object');
+            expect(item).to.have.keys('id', 'title', 'content', 'folderId', 'createdAt', 'updatedAt');
             expect(item.id).to.equal(data[i].id);
             expect(item.title).to.equal(data[i].title);
             expect(item.content).to.equal(data[i].content);
+            // expect(item.folderId).to.equal(data[i].folderId);
             expect(new Date(item.createdAt)).to.eql(data[i].createdAt);
             expect(new Date(item.updatedAt)).to.eql(data[i].updatedAt);
           });
@@ -81,13 +94,32 @@ describe('Node Noteful Tests', function() {
           expect(res.body).to.have.length(1);
           res.body.forEach(function (item, i) {
             expect(item).to.be.a('object');
-            expect(item).to.include.all.keys('id', 'title', 'createdAt', 'updatedAt');
+            expect(item).to.include.all.keys('id', 'title', 'content', 'folderId', 'createdAt', 'updatedAt');
             expect(item.id).to.equal(data[i].id);
             expect(item.title).to.equal(data[i].title);
             expect(item.content).to.equal(data[i].content);
+            // expect(item.folderId).to.equal(data[i].folderId);
             expect(new Date(item.createdAt)).to.eql(data[i].createdAt);
             expect(new Date(item.updatedAt)).to.eql(data[i].updatedAt);
           });
+        });
+    });
+
+    it('should return correct search results for a folderId query', function () {
+      let data;
+      return Folder.findOne()
+        .then((_data) => {
+          data = _data;
+          return Promise.all([
+            Note.find({ folderId: data.id }),
+            chai.request(app).get(`/api/notes?folderId=${data.id}`)
+          ]);
+        })
+        .then(([data, res]) => {
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('array');
+          expect(res.body).to.have.length(data.length);
         });
     });
 
@@ -124,10 +156,11 @@ describe('Node Noteful Tests', function() {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.all.keys('id', 'title', 'content', 'createdAt', 'updatedAt');
+          expect(res.body).to.have.all.keys('id', 'title', 'content', 'folderId', 'createdAt', 'updatedAt');
           expect(res.body.id).to.equal(data.id);
           expect(res.body.title).to.equal(data.title);
           expect(res.body.content).to.equal(data.content);
+          // expect(res.body.folderId).to.equal(data.folderId);
           expect(new Date(res.body.createdAt)).to.eql(data.createdAt);
           expect(new Date(res.body.updatedAt)).to.eql(data.updatedAt);
         });
@@ -172,7 +205,7 @@ describe('Node Noteful Tests', function() {
           expect(res).to.have.status(201);
           expect(res).to.have.header('location');
           expect(res).to.be.json;
-          expect(res.body).to.be.a('object');
+          expect(res.body).to.be.an('object');
           expect(res.body).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt');
           // 2) then call the database
           return Note.findById(res.body.id);
@@ -189,7 +222,7 @@ describe('Node Noteful Tests', function() {
 
     it('should return an error when missing "title" field', function() {
       const newNote = {
-        'content': 'alaksdjflasdfj'
+        'content': 'Lorem ipsum dolor sit amet, consectetur adipisicing elit. Sapiente, officiis.'
       };
       return  chai.request(app)
         .post('/api/notes')
@@ -222,13 +255,12 @@ describe('Node Noteful Tests', function() {
         .then(function (res) {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
-          expect(res.body).to.be.a('object');
-          expect(res.body).to.have.all.keys('id', 'title', 'content', 'createdAt', 'updatedAt');
+          expect(res.body).to.be.an('object');
+          expect(res.body).to.have.keys('id', 'title', 'content', 'folderId', 'createdAt', 'updatedAt');
           expect(res.body.id).to.equal(data.id);
           expect(res.body.title).to.equal(updateItem.title);
           expect(res.body.content).to.equal(updateItem.content);
           expect(new Date(res.body.createdAt)).to.eql(data.createdAt);
-          // expect note to have been updated
           expect(new Date(res.body.updatedAt)).to.greaterThan(data.updatedAt);
         });
     });
