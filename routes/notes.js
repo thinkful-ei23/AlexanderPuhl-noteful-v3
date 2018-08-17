@@ -29,7 +29,7 @@ router.get('/', (req, res, next) => {
   }
 
   Note.find(filter).populate('tags')
-    .sort({ id: 'asc' })
+    .sort({ updatedAt: 'desc' })
     .then(results => {
       res.json(results);
     })
@@ -48,7 +48,7 @@ router.get('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Note.findById(id)
+  Note.findById(id).populate('tags')
     .then(result => {
       if (result) {
         res.json(result);
@@ -78,10 +78,14 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  if (tags && !mongoose.Types.ObjectId.isValid(tags)) {
-    const err = new Error('The `tags` is not valid');
-    err.status = 400;
-    return next(err);
+  if(tags) {
+    tags.forEach(item => {
+      if (item && !mongoose.Types.ObjectId.isValid(item)) {
+        const err = new Error('The `tags` is not valid');
+        err.status = 400;
+        return next(err);
+      }
+    });
   }
 
   const newNote = { title, content, folderId, tags };
@@ -125,7 +129,6 @@ router.put('/:id', (req, res, next) => {
     err.status = 400;
     return next(err);
   }
-
 
   const updateNote = { title, content, folderId, tags };
 

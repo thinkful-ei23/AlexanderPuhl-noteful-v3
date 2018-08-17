@@ -13,7 +13,7 @@ const seedTags = require('../db/seed/tags');
 const expect = chai.expect;
 chai.use(chaiHTTP);
 
-describe('Node Noteful Tag Tests', function() {
+describe('Tag Tests', function() {
   before(function () {
     return mongoose.connect(TEST_MONGODB_URI)
       .then(() => mongoose.connection.db.dropDatabase());

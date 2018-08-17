@@ -13,7 +13,7 @@ const seedFolders = require('../db/seed/folders');
 const expect = chai.expect;
 chai.use(chaiHTTP);
 
-describe('Node Noteful Folder Tests', function() {
+describe('Folder Tests', function() {
   before(function () {
     return mongoose.connect(TEST_MONGODB_URI)
       .then(() => mongoose.connection.db.dropDatabase());
