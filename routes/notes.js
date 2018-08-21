@@ -3,8 +3,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Note = require('../models/note');
-// const Tag = require('../models/tag');
-
 const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */

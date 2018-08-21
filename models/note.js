@@ -14,8 +14,6 @@ noteSchema.set('timestamps', true);
 
 // Customize output for `res.json(data)`, `console.log(data)` etc.
 noteSchema.set('toObject', {
-  // virtuals: true,     // include built-in virtual `id`
-  // versionKey: false,  // remove `__v` version key
   transform: (doc, ret) => {
     ret.id = doc._id;
     ret.title = doc.title;
