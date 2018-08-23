@@ -3,24 +3,22 @@
 const express = require('express');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
-
 const passport = require('passport');
-const localStrategy = require('./passport/local');
-const authRouter = require('./routes/auth');
 
 const { PORT, MONGODB_URI } = require('./config');
+const localStrategy = require('./passport/local');
+const jwtStrategy = require('./passport/jwt');
 
 const notesRouter = require('./routes/notes');
 const foldersRouter = require('./routes/folders');
 const tagsRouter = require('./routes/tags');
 const usersRouter = require('./routes/users');
+const authRouter = require('./routes/auth');
 
 // Create an Express application
 const app = express();
 
-passport.use(localStrategy);
-
-// Log all requests. Skip logging during testing
+// Log all requests. Skip logging during
 app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'common', {
   skip: () => process.env.NODE_ENV === 'test'
 }));
@@ -31,13 +29,19 @@ app.use(express.static('public'));
 // Parse request body
 app.use(express.json());
 
-// Mount routers
-app.use('/api/notes', notesRouter);
-app.use('/api/folders', foldersRouter);
-app.use('/api/tags', tagsRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/login', authRouter);
+// Utilize the given `strategy`
+passport.use(localStrategy);
+passport.use(jwtStrategy);
 
+// Protect endpoints using JWT Strategy
+const jwtAuth = passport.authenticate('jwt', { session: false, failWithError: true });
+
+// Mount routers
+app.use('/api/notes', jwtAuth, notesRouter);
+app.use('/api/folders', jwtAuth, foldersRouter);
+app.use('/api/tags', jwtAuth, tagsRouter);
+app.use('/api/users', usersRouter);
+app.use('/api', authRouter);
 
 // Custom 404 Not Found route handler
 app.use((req, res, next) => {
@@ -52,13 +56,13 @@ app.use((err, req, res, next) => {
     const errBody = Object.assign({}, err, { message: err.message });
     res.status(err.status).json(errBody);
   } else {
-    console.error(err);
     res.status(500).json({ message: 'Internal Server Error' });
+    if (err.name !== 'FakeError') { console.log(err); }
   }
 });
 
 // Listen for incoming connections
-if (process.env.NODE_ENV !== 'test') {
+if (require.main === module) {
   // Connect to DB and Listen for incoming connections
   mongoose.connect(MONGODB_URI)
     .then(instance => {

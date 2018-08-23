@@ -2,24 +2,24 @@
 
 const mongoose = require('mongoose');
 
-const noteSchema = new mongoose.Schema({
+const schema = new mongoose.Schema({
   title: { type: String, required: true },
   content: String,
-  folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder'},
-  tags: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tag' }]
+  folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder' },
+  tags: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tag' }],
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 });
 
 // Add `createdAt` and `updatedAt` fields
-noteSchema.set('timestamps', true);
+schema.set('timestamps', true);
 
-// Customize output for `res.json(data)`, `console.log(data)` etc.
-noteSchema.set('toObject', {
-  transform: (doc, ret) => {
-    ret.id = doc._id;
-    ret.title = doc.title;
-    delete ret._id; // delete `_id`
-    delete ret.__v; // delete `_id`
+// Transform output during `res.json(data)`, `console.log(data)` etc.
+schema.set('toObject', {
+  virtuals: true,
+  transform: (doc, result) => {
+    delete result._id;
+    delete result.__v;
   }
 });
 
-module.exports = mongoose.model('Note', noteSchema);
+module.exports = mongoose.model('Note', schema);
