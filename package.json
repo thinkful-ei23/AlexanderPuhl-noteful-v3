@@ -9,7 +9,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "cross-env NODE_ENV=test mocha --file test/server.test.js --colors --timeout 5000"
+    "test": "cross-env NODE_ENV=test mocha --file test/server.test.js --colors --timeout 5000 ",
+    "cover": "nyc --reporter=lcov --reporter=text-summary npm test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
