@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const router = express.Router();
 const mongoose = require('mongoose');
 
 const Note = require('../models/note');
@@ -56,7 +57,6 @@ function validateTagIds(tags, userId) {
     });
 }
 
-const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
